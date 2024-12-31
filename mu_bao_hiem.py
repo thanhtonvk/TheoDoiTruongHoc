@@ -57,6 +57,9 @@ camera_active = False
 video_path = None
 detect_mode = False  # Flag to activate detection mode
 
+camera_source = "rtsp://admin:hd543211@192.168.1.127:554/0"
+camera_source = 0
+
 
 def generate_frames():
     global camera_active, video_path, detect_mode
@@ -64,7 +67,7 @@ def generate_frames():
 
     # Determine the video source (camera or uploaded video)
     if camera_active:
-        cap = cv2.VideoCapture(0)
+        cap = cv2.VideoCapture(camera_source)
     elif video_path:
         cap = cv2.VideoCapture(video_path)
 

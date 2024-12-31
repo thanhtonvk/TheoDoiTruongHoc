@@ -134,7 +134,7 @@ def generate_frames():
     cap.release()
 
 
-@app.route("/")
+@app.route("/mu-bao-hiem")
 def index():
     return render_template("mu_bao_hiem.html")
 
@@ -174,4 +174,4 @@ def control():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True,port=3333)

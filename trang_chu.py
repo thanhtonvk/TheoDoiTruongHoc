@@ -111,17 +111,17 @@ class ObjectDetectionApp:
     def chedo1(self):
         subprocess.Popen(["python", "bao_luc.py"])
         time.sleep(6)
-        webbrowser.open('http://127.0.0.1:5000')
+        webbrowser.open('http://127.0.0.1:1111/bao-luc')
 
     def chedo2(self):
         subprocess.Popen(["python", "hut_thuoc.py"])
         time.sleep(6)
-        webbrowser.open('http://127.0.0.1:5000')
+        webbrowser.open('http://127.0.0.1:2222/hut-thuoc')
 
     def chedo3(self):
         subprocess.Popen(["python", "mu_bao_hiem.py"])
         time.sleep(6)
-        webbrowser.open('http://127.0.0.1:5000')
+        webbrowser.open('http://127.0.0.1:3333/mu-bao-hiem')
 
 
     def toggle_fullscreen(self):

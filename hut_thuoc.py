@@ -111,7 +111,7 @@ def generate_frames():
     cap.release()
 
 
-@app.route("/")
+@app.route("/hut-thuoc")
 def index():
     return render_template("hut_thuoc.html")
 
@@ -151,4 +151,4 @@ def control():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True,port=2222)

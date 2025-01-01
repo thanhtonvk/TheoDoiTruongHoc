@@ -179,7 +179,26 @@ count_tu_tap = 0
 
 camera_source = "rtsp://admin:hd543211@192.168.1.127:554/0"
 camera_source = 0
+def resize_image_max_height(image,max_height=800):
+    if image is None:
+        raise ValueError("Could not read the image. Check the image path.")
 
+    # Get original dimensions
+    original_height, original_width = image.shape[:2]
+
+    # Check if resizing is needed
+    if original_height > max_height:
+        # Calculate the scaling factor
+        scale = max_height / original_height
+        new_width = int(original_width * scale)
+        new_height = int(original_height * scale)
+
+        # Resize the image
+        resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
+        return resized_image
+    else:
+        # If no resizing needed, return the original image
+        return image
 
 def generate_frames():
     global camera_active, video_path, detect_mode
@@ -199,9 +218,9 @@ def generate_frames():
 
     while cap.isOpened():
         success, frame = cap.read()
-        print(frame.shape)
         if not success:
             break
+        frame = resize_image_max_height(frame)
         image = frame.copy()
         results = predict(frame)
         if results is not None:

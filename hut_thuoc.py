@@ -38,7 +38,26 @@ def send_telegram_photo(frame):
     files = {"photo": ("image.jpg", img_encoded.tobytes())}
     data = {"chat_id": TELEGRAM_CHAT_ID}
     requests.post(TELEGRAM_PHOTO_URL, data=data, files=files)
+def resize_image_max_height(image,max_height=800):
+    if image is None:
+        raise ValueError("Could not read the image. Check the image path.")
 
+    # Get original dimensions
+    original_height, original_width = image.shape[:2]
+
+    # Check if resizing is needed
+    if original_height > max_height:
+        # Calculate the scaling factor
+        scale = max_height / original_height
+        new_width = int(original_width * scale)
+        new_height = int(original_height * scale)
+
+        # Resize the image
+        resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
+        return resized_image
+    else:
+        # If no resizing needed, return the original image
+        return image
 
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "static/uploads"
@@ -72,8 +91,10 @@ def generate_frames():
 
     while cap.isOpened():
         success, frame = cap.read()
+        
         if not success:
             break
+        frame = resize_image_max_height(frame)
         personBoxes = predictPerson(frame)
         for box in personBoxes:
             xmin, ymin, xmax, ymax = box

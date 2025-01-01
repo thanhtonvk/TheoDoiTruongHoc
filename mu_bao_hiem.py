@@ -46,27 +46,16 @@ def send_telegram_photo(frame):
     files = {"photo": ("image.jpg", img_encoded.tobytes())}
     data = {"chat_id": TELEGRAM_CHAT_ID}
     requests.post(TELEGRAM_PHOTO_URL, data=data, files=files)
-def resize_image_max_height(image,max_height=800):
-    if image is None:
-        raise ValueError("Could not read the image. Check the image path.")
-
-    # Get original dimensions
-    original_height, original_width = image.shape[:2]
-
-    # Check if resizing is needed
-    if original_height > max_height:
-        # Calculate the scaling factor
-        scale = max_height / original_height
-        new_width = int(original_width * scale)
-        new_height = int(original_height * scale)
-
-        # Resize the image
-        resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
-        return resized_image
-    else:
-        # If no resizing needed, return the original image
-        return image
-
+import pygame
+pygame.init()
+pygame.mixer.init()
+def play_canh_bao():
+    if not pygame.mixer.music.get_busy():
+        pygame.mixer.music.load("Alarm/hoc_sinh_doi_mu_bao_hiem.mp3")
+        pygame.mixer.music.play()
+        pygame.time.set_timer(pygame.USEREVENT, 10000)
+last_sent_time = 0  # Thời gian lần cuối gửi tin nhắn
+DELAY = 10
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "static/uploads"
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
@@ -82,6 +71,7 @@ camera_source = 0
 
 def generate_frames():
     global camera_active, video_path, detect_mode
+    global last_sent_time
     cap = None
 
     # Determine the video source (camera or uploaded video)
@@ -97,10 +87,9 @@ def generate_frames():
         success, frame = cap.read()
         if not success:
             break
-        frame = resize_image_max_height(frame)
+        image = frame.copy()
         resultBike = combineBoxes(frame)
         if resultBike is not None:
-            print(resultBike)
             boxes, labels = resultBike
             for box, label in zip(boxes, labels):
                 x_min, y_min, x_max, y_max = box
@@ -111,15 +100,17 @@ def generate_frames():
                     boxesHelmet, labelsHelmet = resultHelmet
                     for boxHelmet, labelHelmet in zip(boxesHelmet, labelsHelmet):
                         if labelHelmet == 0:
-                            # threading.Thread(target=self.play_doi_mu).start()
-                            cropped = cv2.cvtColor(cropped, cv2.COLOR_BGR2RGB)
-                            threading.Thread(
-                                target=send_telegram_message,
-                                args=("Học sinh không đội mũ",),
-                            ).start()
-                            threading.Thread(
-                                target=send_telegram_photo, args=(cropped,)
-                            ).start()
+                            current_time = time.time()
+                            if current_time - last_sent_time > DELAY:  # Kiểm tra nếu đủ 10 giây
+                                last_sent_time = current_time
+                                threading.Thread(target=play_canh_bao).start()
+                                # Gửi tin nhắn và ảnh lên Telegram
+                                threading.Thread(
+                                    target=send_telegram_message, args=("Học sinh không đội mũ bảo hiểm",)
+                                ).start()
+                                threading.Thread(
+                                    target=send_telegram_photo, args=(frame,)
+                                ).start()
                         xmin2, ymin2, xmax2, ymax2 = boxHelmet
                         w = xmax2 - xmin2
                         h = ymax2 - ymin2

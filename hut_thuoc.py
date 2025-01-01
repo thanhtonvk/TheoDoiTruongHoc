@@ -5,7 +5,7 @@ import cv2
 import threading
 from modules.smoke_detection import predictPerson, predictSmoke
 from modules.FaceDetector import FaceDetector
-
+import time
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "uploads"
 
@@ -38,26 +38,14 @@ def send_telegram_photo(frame):
     files = {"photo": ("image.jpg", img_encoded.tobytes())}
     data = {"chat_id": TELEGRAM_CHAT_ID}
     requests.post(TELEGRAM_PHOTO_URL, data=data, files=files)
-def resize_image_max_height(image,max_height=800):
-    if image is None:
-        raise ValueError("Could not read the image. Check the image path.")
-
-    # Get original dimensions
-    original_height, original_width = image.shape[:2]
-
-    # Check if resizing is needed
-    if original_height > max_height:
-        # Calculate the scaling factor
-        scale = max_height / original_height
-        new_width = int(original_width * scale)
-        new_height = int(original_height * scale)
-
-        # Resize the image
-        resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
-        return resized_image
-    else:
-        # If no resizing needed, return the original image
-        return image
+import pygame
+pygame.init()
+pygame.mixer.init()
+def play_canh_bao():
+    if not pygame.mixer.music.get_busy():
+        pygame.mixer.music.load("Alarm/hoc_sinh_khong_duoc_hut_thuoc.mp3")
+        pygame.mixer.music.play()
+        pygame.time.set_timer(pygame.USEREVENT, 10000)
 
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "static/uploads"
@@ -75,9 +63,12 @@ thickness = 2
 count_smoke = 0
 camera_source = "rtsp://admin:hd543211@192.168.1.127:554/0"
 camera_source = 0
+last_sent_time = 0  # Thời gian lần cuối gửi tin nhắn
+DELAY = 10
 
 def generate_frames():
     global camera_active, video_path, detect_mode
+    global last_sent_time
     cap = None
 
     # Determine the video source (camera or uploaded video)
@@ -94,7 +85,7 @@ def generate_frames():
         
         if not success:
             break
-        frame = resize_image_max_height(frame)
+        image = frame.copy()
         personBoxes = predictPerson(frame)
         for box in personBoxes:
             xmin, ymin, xmax, ymax = box
@@ -119,10 +110,18 @@ def generate_frames():
                     cv2.putText(
                         frame, text, position, font, font_scale, color, thickness
                     )
-                    threading.Thread(
-                        target=send_telegram_message, args=("Phát hiện hút thuốc",)
-                    ).start()
-                    threading.Thread(target=send_telegram_photo, args=(frame,)).start()
+                    current_time = time.time()
+                    if current_time - last_sent_time > DELAY:  # Kiểm tra nếu đủ 10 giây
+                        last_sent_time = current_time
+                        threading.Thread(target=play_canh_bao).start()
+                        # Gửi tin nhắn và ảnh lên Telegram
+                        threading.Thread(
+                            target=send_telegram_message, args=("Phát hiện người!",)
+                        ).start()
+                        threading.Thread(
+                            target=send_telegram_photo, args=(frame,)
+                        ).start()
+                    
 
         _, buffer = cv2.imencode(".jpg", frame)
         frame = buffer.tobytes()

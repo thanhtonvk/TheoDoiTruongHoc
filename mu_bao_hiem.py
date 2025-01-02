@@ -66,12 +66,16 @@ video_path = None
 detect_mode = False  # Flag to activate detection mode
 
 
-from vlc_player import VLCPlayer
-import numpy as np
-
-camera_source = "rtsp://admin:hd543211@192.168.1.127:554/0"
-vlcPlay = VLCPlayer(camera_source)
-vlcPlay.start()
+import vlc
+camera_source = "rtsp://admin:180683xo@192.168.1.2:554/onvif1"
+instance = vlc.Instance()
+media = instance.media_new(camera_source)
+media_player = instance.media_player_new()
+media_player.set_media(media)
+media_player.play()
+snapshot_path = "snapshot1.png"
+media_player.video_take_snapshot(0, snapshot_path, 0, 0)
+time.sleep(2)
 
 def generate_frames():
     global camera_active, video_path, detect_mode
@@ -81,7 +85,6 @@ def generate_frames():
     global snapshot_path
     cap = None
 
-    # Determine the video source (camera or uploaded video)
     if camera_active:
         if camera_source is None:
             cap = cv2.VideoCapture(0)

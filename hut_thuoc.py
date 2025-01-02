@@ -6,6 +6,7 @@ import threading
 from modules.smoke_detection import predictPerson, predictSmoke
 from modules.FaceDetector import FaceDetector
 import time
+
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "uploads"
 
@@ -38,14 +39,20 @@ def send_telegram_photo(frame):
     files = {"photo": ("image.jpg", img_encoded.tobytes())}
     data = {"chat_id": TELEGRAM_CHAT_ID}
     requests.post(TELEGRAM_PHOTO_URL, data=data, files=files)
+
+
 import pygame
+
 pygame.init()
 pygame.mixer.init()
+
+
 def play_canh_bao():
     if not pygame.mixer.music.get_busy():
         pygame.mixer.music.load("Alarm/hoc_sinh_khong_duoc_hut_thuoc.mp3")
         pygame.mixer.music.play()
         pygame.time.set_timer(pygame.USEREVENT, 10000)
+
 
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "static/uploads"
@@ -61,30 +68,45 @@ font_scale = 1  # Kích thước font chữ
 color = (0, 255, 0)  # Màu chữ (xanh lá cây)
 thickness = 2
 count_smoke = 0
-camera_source = "rtsp://admin:hd543211@192.168.1.127:554/0"
 camera_source = 0
 last_sent_time = 0  # Thời gian lần cuối gửi tin nhắn
 DELAY = 10
+from vlc_player import VLCPlayer
+import numpy as np
+
+camera_source = "rtsp://admin:hd543211@192.168.1.127:554/0"
+vlcPlay = VLCPlayer(camera_source)
+vlcPlay.start()
+
 
 def generate_frames():
     global camera_active, video_path, detect_mode
     global last_sent_time
     cap = None
 
-    # Determine the video source (camera or uploaded video)
     if camera_active:
-        cap = cv2.VideoCapture(camera_source)
+        if camera_source is not None:
+            frame = vlcPlay.read()
+        else:
+            cap = cv2.VideoCapture(0)
     elif video_path:
         cap = cv2.VideoCapture(video_path)
 
     if not cap or not cap.isOpened():
         return
 
-    while cap.isOpened():
-        success, frame = cap.read()
-        
-        if not success:
-            break
+    while True:
+        if camera_source is None:
+            success, frame = cap.read()
+            if not success:
+                break
+        else:
+            if frame is None:
+                break
+            frame = np.frombuffer(frame, dtype=np.uint8).reshape(
+                1080, 1920, 4
+            )  # Điều chỉnh kích thước theo camera
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
         image = frame.copy()
         personBoxes = predictPerson(frame)
         for box in personBoxes:
@@ -116,12 +138,12 @@ def generate_frames():
                         threading.Thread(target=play_canh_bao).start()
                         # Gửi tin nhắn và ảnh lên Telegram
                         threading.Thread(
-                            target=send_telegram_message, args=("Phát hiện người!",)
+                            target=send_telegram_message,
+                            args=("Phát hiện học sinh hút thuốc",),
                         ).start()
                         threading.Thread(
-                            target=send_telegram_photo, args=(frame,)
+                            target=send_telegram_photo, args=(image,)
                         ).start()
-                    
 
         _, buffer = cv2.imencode(".jpg", frame)
         frame = buffer.tobytes()
@@ -171,4 +193,4 @@ def control():
 
 
 if __name__ == "__main__":
-    app.run(debug=True,port=2222)
+    app.run(debug=True, port=2222)

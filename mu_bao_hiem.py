@@ -65,28 +65,42 @@ camera_active = False
 video_path = None
 detect_mode = False  # Flag to activate detection mode
 
-camera_source = "rtsp://admin:hd543211@192.168.1.127:554/0"
-camera_source = 0
 
+from vlc_player import VLCPlayer
+import numpy as np
+
+camera_source = "rtsp://admin:hd543211@192.168.1.127:554/0"
+vlcPlay = VLCPlayer(camera_source)
+vlcPlay.start()
 
 def generate_frames():
     global camera_active, video_path, detect_mode
     global last_sent_time
     cap = None
 
-    # Determine the video source (camera or uploaded video)
     if camera_active:
-        cap = cv2.VideoCapture(camera_source)
+        if camera_source is not None:
+            frame = vlcPlay.read()
+        else:
+            cap = cv2.VideoCapture(0)
     elif video_path:
         cap = cv2.VideoCapture(video_path)
 
     if not cap or not cap.isOpened():
         return
 
-    while cap.isOpened():
-        success, frame = cap.read()
-        if not success:
-            break
+    while True:
+        if camera_source is None:
+            success, frame = cap.read()
+            if not success:
+                break
+        else:
+            if frame is None:
+                break
+            frame = np.frombuffer(frame, dtype=np.uint8).reshape(
+                1080, 1920, 4
+            )  # Điều chỉnh kích thước theo camera
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
         image = frame.copy()
         resultBike = combineBoxes(frame)
         if resultBike is not None:
@@ -109,7 +123,7 @@ def generate_frames():
                                     target=send_telegram_message, args=("Học sinh không đội mũ bảo hiểm",)
                                 ).start()
                                 threading.Thread(
-                                    target=send_telegram_photo, args=(frame,)
+                                    target=send_telegram_photo, args=(image,)
                                 ).start()
                         xmin2, ymin2, xmax2, ymax2 = boxHelmet
                         w = xmax2 - xmin2

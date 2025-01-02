@@ -10,7 +10,7 @@ import pygame
 import requests
 from modules.bao_luc import predict_baoluc
 from scipy.spatial import distance
-
+import numpy as np
 
 # Initialize pygame for sound playback
 pygame.init()
@@ -177,28 +177,14 @@ count_frame = 0
 count_bao_luc = 0
 count_tu_tap = 0
 
+
+from vlc_player import VLCPlayer
+import numpy as np
+
 camera_source = "rtsp://admin:hd543211@192.168.1.127:554/0"
-camera_source = 0
-def resize_image_max_height(image,max_height=800):
-    if image is None:
-        raise ValueError("Could not read the image. Check the image path.")
+vlcPlay = VLCPlayer(camera_source)
+vlcPlay.start()
 
-    # Get original dimensions
-    original_height, original_width = image.shape[:2]
-
-    # Check if resizing is needed
-    if original_height > max_height:
-        # Calculate the scaling factor
-        scale = max_height / original_height
-        new_width = int(original_width * scale)
-        new_height = int(original_height * scale)
-
-        # Resize the image
-        resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
-        return resized_image
-    else:
-        # If no resizing needed, return the original image
-        return image
 
 def generate_frames():
     global camera_active, video_path, detect_mode
@@ -209,18 +195,28 @@ def generate_frames():
 
     # Determine the video source (camera or uploaded video)
     if camera_active:
-        cap = cv2.VideoCapture(camera_source)
+        if camera_source is not None:
+            frame = vlcPlay.read()
+        else:
+            cap = cv2.VideoCapture(0)
     elif video_path:
         cap = cv2.VideoCapture(video_path)
 
     if not cap or not cap.isOpened():
         return
 
-    while cap.isOpened():
-        success, frame = cap.read()
-        if not success:
-            break
-        frame = resize_image_max_height(frame)
+    while True:
+        if camera_source is None:
+            success, frame = cap.read()
+            if not success:
+                break
+        else:
+            if frame is None:
+                break
+            frame = np.frombuffer(frame, dtype=np.uint8).reshape(
+                1080, 1920, 4
+            )  # Điều chỉnh kích thước theo camera
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
         image = frame.copy()
         results = predict(frame)
         if results is not None:
@@ -363,4 +359,4 @@ def control():
 
 
 if __name__ == "__main__":
-    app.run(debug=True,port=1111)
+    app.run(debug=True, port=1111)

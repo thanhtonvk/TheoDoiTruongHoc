@@ -177,33 +177,33 @@ count_frame = 0
 count_bao_luc = 0
 count_tu_tap = 0
 
-
-from vlc_player import VLCPlayer
-import numpy as np
-
-camera_source = "rtsp://admin:hd543211@192.168.1.127:554/0"
-vlcPlay = VLCPlayer(camera_source)
-vlcPlay.start()
-
+import vlc
+camera_source = "rtsp://admin:180683xo@192.168.1.2:554/onvif1"
+instance = vlc.Instance()
+media = instance.media_new(camera_source)
+media_player = instance.media_player_new()
+media_player.set_media(media)
+media_player.play()
+snapshot_path = "snapshot1.png"
+media_player.video_take_snapshot(0, snapshot_path, 0, 0)
+time.sleep(2)
 
 def generate_frames():
     global camera_active, video_path, detect_mode
     global result, THOI_GIAN_BAO_LUC, THOI_GIAN_XO_XAT, is_play_audio, is_play_danh_nhau
     global TRANG_THAI, is_normal_state, count_frame, count_bao_luc, count_tu_tap
     global frames
+    global camera_source
+    global media_player
+    global snapshot_path
     cap = None
 
     # Determine the video source (camera or uploaded video)
     if camera_active:
-        if camera_source is not None:
-            frame = vlcPlay.read()
-        else:
+        if camera_source is None:
             cap = cv2.VideoCapture(0)
     elif video_path:
         cap = cv2.VideoCapture(video_path)
-
-    if not cap or not cap.isOpened():
-        return
 
     while True:
         if camera_source is None:
@@ -211,12 +211,10 @@ def generate_frames():
             if not success:
                 break
         else:
+            media_player.video_take_snapshot(0, snapshot_path, 0, 0)
+            frame = cv2.imread(snapshot_path)
             if frame is None:
                 break
-            frame = np.frombuffer(frame, dtype=np.uint8).reshape(
-                1080, 1920, 4
-            )  # Điều chỉnh kích thước theo camera
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
         image = frame.copy()
         results = predict(frame)
         if results is not None:

@@ -2,7 +2,6 @@ import vlc
 import cv2
 import numpy as np
 import time
-
 class VLCPlayer:
     def __init__(self, rtsp_url):
         # Tạo instance của VLC
@@ -14,10 +13,11 @@ class VLCPlayer:
         self.player.set_media(media)
         
         # Tạo buffer để lưu frame
+        self.frame_buffer = np.zeros((1080, 1920, 4), dtype=np.uint8)  # Điều chỉnh độ phân giải theo camera
         self.frame = None
         
         # Liên kết hàm callback cho video output
-        self.player.video_set_callbacks(self.lock, self.unlock, self.display)
+        self.player.video_set_callbacks(self.lock, self.unlock, self.display, False)
         self.player.video_set_format("RV32", 1920, 1080, 1920 * 4)
 
     def lock(self, opaque, planes):

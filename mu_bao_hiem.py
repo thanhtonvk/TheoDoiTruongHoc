@@ -46,14 +46,21 @@ def send_telegram_photo(frame):
     files = {"photo": ("image.jpg", img_encoded.tobytes())}
     data = {"chat_id": TELEGRAM_CHAT_ID}
     requests.post(TELEGRAM_PHOTO_URL, data=data, files=files)
+
+
 import pygame
+
 pygame.init()
 pygame.mixer.init()
+
+
 def play_canh_bao():
     if not pygame.mixer.music.get_busy():
         pygame.mixer.music.load("Alarm/hoc_sinh_doi_mu_bao_hiem.mp3")
         pygame.mixer.music.play()
         pygame.time.set_timer(pygame.USEREVENT, 10000)
+
+
 last_sent_time = 0  # Thời gian lần cuối gửi tin nhắn
 DELAY = 10
 app = Flask(__name__)
@@ -64,18 +71,8 @@ os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 camera_active = False
 video_path = None
 detect_mode = False  # Flag to activate detection mode
-
-
-import vlc
 camera_source = "rtsp://admin:180683xo@192.168.1.2:554/onvif1"
-instance = vlc.Instance()
-media = instance.media_new(camera_source)
-media_player = instance.media_player_new()
-media_player.set_media(media)
-media_player.play()
-snapshot_path = "snapshot1.png"
-media_player.video_take_snapshot(0, snapshot_path, 0, 0)
-time.sleep(2)
+
 
 def generate_frames():
     global camera_active, video_path, detect_mode
@@ -86,13 +83,25 @@ def generate_frames():
     cap = None
 
     if camera_active:
-        if camera_source is None:
-            cap = cv2.VideoCapture(0)
+
+        if str(camera_source).isdigit():
+            cap = cv2.VideoCapture(camera_source)
+        else:
+            import vlc
+
+            instance = vlc.Instance()
+            media = instance.media_new(camera_source)
+            media_player = instance.media_player_new()
+            media_player.set_media(media)
+            media_player.play()
+            snapshot_path = "snapshot1.png"
+            media_player.video_take_snapshot(0, snapshot_path, 0, 0)
+            time.sleep(2)
     elif video_path:
         cap = cv2.VideoCapture(video_path)
 
     while True:
-        if camera_source is None:
+        if str(camera_source).isdigit() or camera_active or video_path is not None:
             success, frame = cap.read()
             if not success:
                 break
@@ -115,12 +124,15 @@ def generate_frames():
                     for boxHelmet, labelHelmet in zip(boxesHelmet, labelsHelmet):
                         if labelHelmet == 0:
                             current_time = time.time()
-                            if current_time - last_sent_time > DELAY:  # Kiểm tra nếu đủ 10 giây
+                            if (
+                                current_time - last_sent_time > DELAY
+                            ):  # Kiểm tra nếu đủ 10 giây
                                 last_sent_time = current_time
                                 threading.Thread(target=play_canh_bao).start()
                                 # Gửi tin nhắn và ảnh lên Telegram
                                 threading.Thread(
-                                    target=send_telegram_message, args=("Học sinh không đội mũ bảo hiểm",)
+                                    target=send_telegram_message,
+                                    args=("Học sinh không đội mũ bảo hiểm",),
                                 ).start()
                                 threading.Thread(
                                     target=send_telegram_photo, args=(image,)
@@ -173,7 +185,7 @@ def video_feed():
 
 @app.route("/control", methods=["POST"])
 def control():
-    global camera_active, video_path, detect_mode
+    global camera_active, video_path, detect_mode, camera_source
 
     action = request.form.get("action")
 
@@ -181,11 +193,14 @@ def control():
         camera_active = True
         detect_mode = True
         video_path = None
+        camera_source = "rtsp://admin:180683xo@192.168.1.2:554/onvif1"
     elif action == "exit":
         camera_active = False
         detect_mode = False
         video_path = None
+        camera_source = None
     elif "video_file" in request.files:
+        camera_source = None
         file = request.files["video_file"]
         if file and file.filename:
             video_path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
@@ -199,4 +214,4 @@ def control():
 
 
 if __name__ == "__main__":
-    app.run(debug=True,port=3333)
+    app.run(debug=True, port=3333)

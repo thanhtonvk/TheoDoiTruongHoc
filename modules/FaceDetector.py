@@ -12,7 +12,7 @@ class FaceDetector:
     def detect(
             self,
             np_image: np.ndarray,
-            confidence_threshold=0.5,
+            confidence_threshold=0.6,
     ):
         bboxes = []
         predictions = self.model.get(

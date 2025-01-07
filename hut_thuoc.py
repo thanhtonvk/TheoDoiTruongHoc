@@ -168,7 +168,7 @@ def video_feed():
 
 @app.route("/control", methods=["POST"])
 def control():
-    global camera_active, video_path, detect_mode
+    global camera_active, video_path, detect_mode,camera_source
 
     action = request.form.get("action")
 
@@ -176,14 +176,17 @@ def control():
         camera_active = True
         detect_mode = True
         video_path = None
+        camera_source = "rtsp://admin:180683xo@192.168.1.2:554/onvif1"
     elif action == "exit":
         camera_active = False
         detect_mode = False
         video_path = None
     elif "video_file" in request.files:
         file = request.files["video_file"]
+        camera_source = None
         if file and file.filename:
             video_path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
+            print(video_path)
             file.save(video_path)
             detect_mode = True
             camera_active = False

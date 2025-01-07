@@ -335,7 +335,7 @@ def video_feed():
 
 @app.route("/control", methods=["POST"])
 def control():
-    global camera_active, video_path, detect_mode
+    global camera_active, video_path, detect_mode,camera_source
 
     action = request.form.get("action")
 

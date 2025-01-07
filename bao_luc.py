@@ -6,13 +6,15 @@ import cv2
 import threading
 import time
 from ultralytics import YOLO
-import pygame
+
 import requests
 from modules.bao_luc import predict_baoluc
 from scipy.spatial import distance
 import numpy as np
 
 # Initialize pygame for sound playback
+import pygame
+
 pygame.init()
 pygame.mixer.init()
 
@@ -177,16 +179,9 @@ count_frame = 0
 count_bao_luc = 0
 count_tu_tap = 0
 
-import vlc
+
 camera_source = "rtsp://admin:180683xo@192.168.1.2:554/onvif1"
-instance = vlc.Instance()
-media = instance.media_new(camera_source)
-media_player = instance.media_player_new()
-media_player.set_media(media)
-media_player.play()
-snapshot_path = "snapshot1.png"
-media_player.video_take_snapshot(0, snapshot_path, 0, 0)
-time.sleep(2)
+
 
 def generate_frames():
     global camera_active, video_path, detect_mode
@@ -200,13 +195,24 @@ def generate_frames():
 
     # Determine the video source (camera or uploaded video)
     if camera_active:
-        if camera_source is None:
-            cap = cv2.VideoCapture(0)
+        if str(camera_source).isdigit():
+            cap = cv2.VideoCapture(camera_source)
+        else:
+            import vlc
+
+            instance = vlc.Instance()
+            media = instance.media_new(camera_source)
+            media_player = instance.media_player_new()
+            media_player.set_media(media)
+            media_player.play()
+            snapshot_path = "snapshot1.png"
+            media_player.video_take_snapshot(0, snapshot_path, 0, 0)
+            time.sleep(2)
     elif video_path:
         cap = cv2.VideoCapture(video_path)
 
     while True:
-        if camera_source is None:
+        if str(camera_source).isdigit() or camera_active or video_path is not None:
             success, frame = cap.read()
             if not success:
                 break
@@ -329,7 +335,7 @@ def video_feed():
 
 @app.route("/control", methods=["POST"])
 def control():
-    global camera_active, video_path, detect_mode,camera_source
+    global camera_active, video_path, detect_mode
 
     action = request.form.get("action")
 
@@ -342,7 +348,9 @@ def control():
         camera_active = False
         detect_mode = False
         video_path = None
+        camera_source = None
     elif "video_file" in request.files:
+        camera_source = None
         file = request.files["video_file"]
         camera_source = None
         if file and file.filename:
